@@ -2,7 +2,7 @@ from flask import Flask,request,make_response,jsonify
 import loadvalues
 import sqlite3
 
-loadvalues
+loadvalues  #parsing and storing values in database
 app = Flask(__name__)
 
 def dict_factory(cursor, row):
@@ -12,7 +12,7 @@ def dict_factory(cursor, row):
     return d
 
 def findRoutes(args):
-    con = sqlite3.connect('example.db')
+    con = sqlite3.connect('gtfs.db')
     con.row_factory = dict_factory
     cur = con.cursor()
     a= cur.execute('''select st.trip_id as TripID, r.route_id as RouteID,t.trip_headsign as HeadSign, strftime('%s', time(st.arrival_time)) - strftime('%s', time('now','localtime')) as RemainingSeconds, time(st.arrival_time) as Arrivaltime from stop_times st,trips t,routes r,calendar c where time(st.arrival_time)> time('now','localtime') and t.trip_id=st.trip_id and st.stop_id = ? and r.route_id=t.route_id and c.service_id=t.service_id and c.start_date<strftime('%Y%m%d', 'now', 'localtime') and c.end_date>strftime('%Y%m%d', 'now', 'localtime')
@@ -32,7 +32,6 @@ def findRoutes(args):
 @app.route('/stoproute')
 def approute():
     args = request.args.get('stopid')
-    print(args)
     return jsonify(findRoutes(args))
 
 

@@ -3,14 +3,14 @@ import csv
 import os
 
 
-if os.path.exists('example.db'):
-    os.remove('example.db')
+if os.path.exists('gtfs.db'):
+    os.remove('gtfs.db')
 
 f = open('input/agency.txt', 'r')  # open the csv data file
 next(f, None)  # skip the header row
 reader = csv.reader(f)
 
-sql = sqlite3.connect('example.db')
+sql = sqlite3.connect('gtfs.db')
 cur = sql.cursor()
 
 cur.execute('''CREATE TABLE IF NOT EXISTS agency
