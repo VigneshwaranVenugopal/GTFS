@@ -7,11 +7,6 @@ import json
 
 app = Flask(__name__)
 
-routes_list = []
-trips_list = []
-stop_times_list = []
-calendar_dates_list = []
-
 def populate():
     with open('input/routes.txt', 'r') as f:
         reader = csv.reader(f)
@@ -44,7 +39,7 @@ def populate():
 
 
 #Returns service id of the bus in current date
-def calender_afterday():
+def calender_dates_today():
     service_id = []
     for row in calendar_dates_list:
         start = datetime.strptime(row[8], '%Y%m%d')
@@ -63,53 +58,63 @@ def calender_afterday():
 
 def gettrips_from_serviceid(service):
     trips_from_serviceid = []
-    for row2 in trips_list:
-        if(int(row2[1]) in service):
-            trips_from_serviceid.append(row2)
+    for trip in trips_list:
+        if(int(trip[1]) in service):
+            trips_from_serviceid.append(trip)
     return trips_from_serviceid
 
 #Return trip_id, start/end time, remaining_time in sorted order
-def tripid_from_stopid(stop_id):
+def tripid_from_stopid(stop_id,trips):
     trip_id_result = []
-    for row in stop_times_list:
-        if(row[3] == stop_id):
-            if(int(row[1].strip().split(':')[0])<24):
-                cur1Time = datetime.combine(datetime.now().date(), datetime.strptime(row[1].strip(), '%H:%M:%S').time())
+    trip_id_set = set()
+    count = 0
+    for trip in trips:
+        trip_id_set.add(trip[2])
+    for stop_time in stop_times_list:
+        if(stop_time[3] == stop_id):
+            if(int(stop_time[1].strip().split(':')[0])<24):
+                cur1Time = datetime.combine(datetime.now().date(), datetime.strptime(stop_time[1].strip(), '%H:%M:%S').time())
                 if(cur1Time>datetime.now()):
-                    dup2 = cur1Time-datetime.now()
-                    row.append(dup2.total_seconds())
-                    trip_id_result.append(row)
+                    if(stop_time[0] in trip_id_set):
+                        count += 1
+                        if (count > 3):
+                            break
+                        dup2 = cur1Time-datetime.now()
+                        stop_time.append(dup2.total_seconds())
+                        trip_id_result.append(stop_time)
     return sorted(trip_id_result,key=itemgetter(9))
 
 def get_routeid(stopid):
-    populate()
+    #populate()
     result = {}
-    final_serviceid_calendarlist = calender_afterday()
-    stop_times_trip_details = tripid_from_stopid(str(stopid))
-    trips = gettrips_from_serviceid(final_serviceid_calendarlist)
+    serviceid_calendarlist = calender_dates_today()
+    trips = gettrips_from_serviceid(serviceid_calendarlist)
+    stop_times_trip_details = tripid_from_stopid(str(stopid),trips)
+
     count = 0
-    for row1 in stop_times_trip_details:
-        for row2 in routes_list:
-            for row3 in trips:
-                if (int(row3[0]) == int(row2[0]) and int(row1[0])==int(row3[2])):
+    for stop_time in stop_times_trip_details:
+        for route in routes_list:
+            for trip in trips:
+                if (int(trip[0]) == int(route[0]) and int(stop_time[0])==int(trip[2])):
                     count+=1
                     if(count>3):
                         break
                     result[str(count)] = {}
-                    result[str(count)] ['stopid'] = str(row1[3])
-                    result[str(count)] ['routeid'] = str(row2[0])
-                    result[str(count)] ['tripid'] = str(row1[0])
-                    result[str(count)] ['arrivalTime'] = str(row1[1])
-                    result[str(count)] ['remainingTime'] = str(row1[9])
-                    result[str(count)] ['routename'] = str(row2[3])
+                    result[str(count)] ['stopid'] = str(stop_time[3])
+                    result[str(count)] ['routeid'] = str(route[0])
+                    result[str(count)] ['tripid'] = str(stop_time[0])
+                    result[str(count)] ['arrivalTime'] = str(stop_time[1])
+                    result[str(count)] ['remainingTime'] = str(stop_time[9])
+                    result[str(count)] ['routename'] = str(route[3])
             if count >3:
                 break
         if count>3:
             break
     return result
+populate()
+print(get_routeid('1599'))
 
-
-@app.route('/stoproute')
+@app.route('/nextbus')
 def approute():
     args = request.args.get('stopid')
     return json.dumps(get_routeid(str(args)))
